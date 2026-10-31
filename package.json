@@ -10,7 +10,13 @@
     "seed": "tsx agents/seed.ts",
     "reset": "tsx agents/seed.ts --reset",
     "spike": "tsx agents/spike.ts",
-    "relay:local": "npx -y @relaycast/engine@12.2.1 --db ./relay.db --port 8787"
+    "relay:local": "npx -y @relaycast/engine@12.2.1 --db ./relay.db --port 8787",
+    "server": "node --import tsx server/index.ts",
+    "worker": "node --import tsx agents/worker.ts --name workergpt",
+    "standby": "node --import tsx agents/standby.ts --name standbyclaude",
+    "demo": "bash scripts/demo.sh",
+    "demo:zombie": "ZOMBIE=1 bash scripts/demo.sh",
+    "test:lease": "tsx lease/test.ts"
   },
   "dependencies": {
     "@agent-relay/sdk": "14.0.0",
