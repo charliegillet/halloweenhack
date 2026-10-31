@@ -2,7 +2,7 @@
 
 **One line:** When an agent dies, its work doesn't.
 
-**Track:** Agent Relay
+**Track:** Agent Relay (also uses Terse Durable Actors)
 
 ---
 
@@ -33,7 +33,7 @@ Agent Relay carries the whole recovery. This uses `@agent-relay/sdk@14.0.0`, pin
 - **Each agent has its own Relay identity and credentials.** The identities are `workergpt`, `standbyclaude`, `afterlife` (the dispatcher) and `workergptb` (the zombie). Each name gets a run-ID suffix, for example `standbyclaudeea72`. Every agent is registered once with `strict:true` and reconnects with its own token. Each process loads only its own token from the gitignored `tokens/` directory.
 - **The board shows real Relay messages.** The board's relay observer pane lists the Relay message IDs that the agents report back after each post.
 
-**Terse:** not used in this build. The lease module can switch backends (`LEASE_BACKEND=terse|local`), but the Terse Durable Actor backend is still a stub that falls back to the local backend. The demo runs on the local backend, an in-process timer inside the always-on server.
+**Terse Durable Actors:** the lease authority runs as a Terse Durable Actor (`actor/src/task.ts`, `durable-actors@0.14.6`, one `LeaseTask` actor per task, adapted from teammate Nihal's Task actor). Its state is `@Persisted`. Every heartbeat re-arms the actor's own alarm (`this.alarm.set(leaseExpiresAt)`), and `onAlarm()` is the only code that marks a task LOST and bumps the epoch, so "presumed dead" comes from the actor, not from a timer in our server. Actor calls are serialized, so the first claim wins and commits never interleave. The server only reads the actor's ledger and turns the alarm into the Relay handoff DM. Run `npm run actor:dev`, then `npm run server:terse`. Run `refund144021` went the full way on Terse: kill at step 3, alarm after 8.1s, DM queued, Claude finished, one refund. An in-process backend (`LEASE_BACKEND=local`) with the same contract is the fallback.
 
 ### Originality
 
@@ -60,7 +60,7 @@ These runs used real LLM calls with no stubs.
   - The standby started about 4s later, drained 3 queued DMs (skipping 2 stale ones), claimed epoch 2 and rebuilt steps 1–3 from the channel.
   - Claude did steps 4–6, the task reached DONE, and `outbox.jsonl` holds one refund.
 - **Zombie run (`refund142409`).** The worker was frozen, then woken after Claude claimed the task. Its late step 4 commit was rejected with `REJECTED: epoch 1 < 2`, its late Relay post shows as stale, and `outbox.jsonl` holds one refund.
-- **To reproduce:** run `npm install`, put the OpenAI and Anthropic keys in `.env`, then run `npm run seed`, `npm run server` and `npm run demo`. Use `npm run demo:zombie` for the zombie run. One run takes about 90–100s.
+- **To reproduce:** run `npm install`, put the OpenAI and Anthropic keys in `.env`, then run `npm run seed`, `npm run actor:install` and `npm run actor:dev` (Terse runtime on :7100), then `npm run server:terse` and `npm run demo`. Use `npm run demo:zombie` for the zombie run. Without the actor runtime, `npm run server` uses the local backend. One run takes about 2–3 minutes on hosted Relay today.
 
 **Limits:**
 
