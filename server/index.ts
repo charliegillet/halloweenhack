@@ -1,5 +1,7 @@
 // Afterlife always-on server: lease authority + dispatcher + SSE board feed + static board. Never killed in the demo.
 // http://localhost:4000  (PORT env to override)
+import { spawn, type ChildProcess } from 'node:child_process';
+import { mkdirSync, openSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, existsSync, writeFileSync, statSync } from 'node:fs';
 import { join, extname, normalize as normPath } from 'node:path';
@@ -143,6 +145,57 @@ async function replay(res: ServerResponse) {
   for (const o of outbox) send(res, o);
 }
 
+
+// ---------------------------------------------------------------- run control (drive a real run from the board)
+type Child = { pid: number; alive: boolean; frozen: boolean };
+let curTask: string | null = null;
+let curComplaint = '';
+let worker: Child | null = null;
+let standby: Child | null = null;
+const alive = (c: Child | null) => !!c && c.alive;
+function spawnAgent(script: string, role: string, args: string[], logFile: string, env: Record<string, string>): Child {
+  mkdirSync(join(ROOT, 'logs'), { recursive: true });
+  const fd = openSync(join(ROOT, 'logs', logFile), 'w');
+  const cp: ChildProcess = spawn('node', ['--import', 'tsx', script, '--name', role, ...args], {
+    cwd: ROOT, detached: true, stdio: ['ignore', fd, fd],
+    env: { ...process.env, STEP_DELAY_MS: process.env.STEP_DELAY_MS || '1500', ...env },
+  });
+  cp.unref();
+  const c: Child = { pid: cp.pid!, alive: true, frozen: false };
+  cp.on('exit', () => { c.alive = false; c.frozen = false; setProc(fullName(role), 'down', c.pid); });
+  setProc(fullName(role), 'up', c.pid);
+  return c;
+}
+async function control(p: string, b: any): Promise<{ code: number; out: any }> {
+  const sig = (c: Child | null, s: NodeJS.Signals) => { if (!alive(c)) return null; try { process.kill(c!.pid, s); return c!.pid; } catch { return null; } };
+  switch (p) {
+    case '/control/run': {
+      const t = curTask ? await lease.status(curTask) : null;
+      if (alive(worker) && t && t.state !== 'DONE') return { code: 409, out: { ok: false, error: 'worker for unfinished task still alive', taskId: curTask } };
+      await lease.reset();
+      relayMsgs.clear(); outbox.length = 0; channels.clear(); handoffs.clear();
+      seedProcs();
+      writeFileSync(join(ROOT, 'outbox.jsonl'), '');
+      for (const c of clients) await replay(c);
+      const d = new Date(); const z = (n: number) => String(n).padStart(2, '0');
+      curTask = `refund${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
+      curComplaint = typeof b.complaint === 'string' ? b.complaint.trim() : '';
+      const role = b.zombie ? 'workergptb' : 'workergpt';
+      worker = spawnAgent('agents/worker.ts', role, ['--task', curTask], 'worker.log', { COMPLAINT: curComplaint });
+      return { code: 200, out: { ok: true, taskId: curTask, pid: worker.pid } };
+    }
+    case '/control/kill': { const pid = sig(worker, 'SIGKILL'); return pid ? { code: 200, out: { ok: true, pid } } : { code: 409, out: { ok: false, error: 'no live worker' } }; }
+    case '/control/freeze': { const pid = sig(worker, 'SIGSTOP'); if (pid) worker!.frozen = true; return pid ? { code: 200, out: { ok: true, pid } } : { code: 409, out: { ok: false, error: 'no live worker' } }; }
+    case '/control/thaw': { const pid = sig(worker, 'SIGCONT'); if (pid) worker!.frozen = false; return pid ? { code: 200, out: { ok: true, pid } } : { code: 409, out: { ok: false, error: 'no live worker' } }; }
+    case '/control/standby': {
+      if (alive(standby)) return { code: 409, out: { ok: false, error: 'standby already running', pid: standby!.pid } };
+      standby = spawnAgent('agents/standby.ts', 'standbyclaude', [], 'standby.log', { COMPLAINT: curComplaint });
+      return { code: 200, out: { ok: true, pid: standby.pid } };
+    }
+  }
+  return { code: 404, out: { ok: false, error: 'unknown endpoint' } };
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://x');
   const p = url.pathname;
@@ -156,6 +209,7 @@ const server = createServer(async (req, res) => {
       req.on('close', () => { clients.delete(res); clearInterval(ka); });
       return;
     }
+    if (req.method === 'GET' && p === '/control/state') return json(res, 200, { taskId: curTask, worker: { pid: worker?.pid ?? null, alive: alive(worker), frozen: !!worker?.frozen }, standby: { pid: standby?.pid ?? null, alive: alive(standby) }, backend: lease.backend });
     if (req.method === 'GET' && p === '/health') return json(res, 200, { ok: true, relay: !!relay, backend: lease.backend, afterlife: AFTERLIFE });
     if (req.method === 'GET' && p === '/procs') return json(res, 200, [...procs.values()]);
     if (req.method === 'GET' && p.startsWith('/task/')) {
@@ -167,6 +221,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST') {
       const b = await body(req);
       if (b.name) touch(b.name, b.pid);
+      if (p.startsWith('/control/')) { const r = await control(p, b); return json(res, r.code, r.out); }
       switch (p) {
         case '/task/start': {
           const channel = `task-${b.taskId}`;
@@ -207,7 +262,7 @@ const server = createServer(async (req, res) => {
       return json(res, 404, { ok: false, error: 'unknown endpoint' });
     }
     // static board
-    let f = normPath(join(APP, p === '/' ? 'index.html' : p));
+    let f = normPath(join(APP, p === '/' || p === '/demo' || p === '/live' ? 'index.html' : p));
     if (!f.startsWith(APP)) return json(res, 403, { ok: false });
     if (existsSync(f) && statSync(f).isFile()) {
       res.writeHead(200, { 'content-type': MIME[extname(f)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
