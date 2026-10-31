@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "board-mock",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4100", "--bind", "127.0.0.1", "--directory", "app"],
+      "port": 4100
+    }
+  ]
+}
