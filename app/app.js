@@ -468,7 +468,7 @@
   requestAnimationFrame(frame);
 
   // ---------------------------------------------------------------- wiring
-  const MODE_DEMO = !!window.AL_DEMO;
+  const MODE_DEMO = !!window.AL_DEMO && !window.AL_SHOT; // ?shot=1: mock data, live look (README screenshots)
   // ---- mode badge + controls
   {
     const mp = $("#modepill"), mt = $("#modetext");
