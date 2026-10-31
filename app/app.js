@@ -516,8 +516,11 @@
       const en = (id, on) => { $(id).disabled = off || busy || !st || !on; };
       en("#b-run", !alive || done); en("#b-kill", alive);
       en("#b-freeze", alive && !w.frozen && !!(st && st.zombie !== false)); en("#b-thaw", alive && !!w.frozen);
-      en("#b-standby", lost && !(sb && sb.alive));
-      $("#c-hint").textContent = off ? "controls unavailable" : "Start → wait for step 3 → Kill → wait for DM → Wake Claude";
+      const dmIn = [...S.relay.values()].some((m) => (m.data || {}).kind === "dm" || (m.data || {}).resumeFromStep != null);
+      en("#b-standby", lost && dmIn && !(sb && sb.alive)); // wake Claude only once the handoff DM is queued in Relay
+      $("#c-hint").textContent = off ? "controls unavailable"
+        : lost && !dmIn ? "handoff DM on its way to Relay… (Wake Claude unlocks when it lands)"
+        : "Start → wait for step 3 → Kill → wait for DM → Wake Claude";
       box.classList.toggle("off", off);
     }
     async function poll() {
