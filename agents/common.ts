@@ -21,7 +21,7 @@ export async function api<T = any>(path: string, body?: unknown): Promise<T> {
     method: body === undefined ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(20000),
   });
   return (await res.json()) as T;
 }
