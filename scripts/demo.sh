@@ -27,6 +27,7 @@ else
   echo "[demo] kill -9 $WPID (worker dies after step 3)"; kill -9 $WPID
 fi
 node scripts/wait.mjs "$TASK" lost 30
+node scripts/wait.mjs "$TASK" dm 120 || echo "[demo] WARNING: handoff DM not confirmed yet; standby will pick it up live"
 sleep "$STANDBY_DELAY"
 echo "[demo] starting standbyclaude (Claude); it was offline when the DM was sent"
 node --import tsx agents/standby.ts --name standbyclaude > logs/standby.log 2>&1 &
