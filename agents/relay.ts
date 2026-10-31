@@ -137,7 +137,7 @@ export class RelayConn {
       m.channel = undefined; // inbox reports DMs as kind:'channel' with a dmch_ id (#1987)
       await this.hydrate(m);
       out.push(m);
-      try { await this.client.inbox.ack({ inboxItemId: it.id, state: 'read' }); } catch {}
+      this.client.inbox.ack({ inboxItemId: it.id, state: 'read' }).catch(() => {}); // fire-and-forget: keep takeover fast
     }
     return out;
   }
