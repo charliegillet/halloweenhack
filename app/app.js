@@ -474,7 +474,7 @@
     const mp = $("#modepill"), mt = $("#modetext");
     mp.classList.add(MODE_DEMO ? "demo" : "livemode");
     mt.textContent = MODE_DEMO ? "SIMULATED REPLAY — scripted events, no live agents" : "LIVE — real GPT · Claude · Agent Relay · Terse";
-    $(MODE_DEMO ? "#nav-demo" : "#nav-live").classList.add("on");
+    $(MODE_DEMO ? "#nav-demo" : "#nav-live")?.classList.add("on");
   }
   window.afterlife = { ingest, reset, setConn, state: S };
   render();
