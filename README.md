@@ -53,46 +53,42 @@ Afterlife takes care of crash recovery for agents:
 ## 🦇 How it works
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"background":"#0b0710","primaryColor":"#2a1238","primaryTextColor":"#ffe8cc","primaryBorderColor":"#f59a3b","lineColor":"#f59a3b","secondaryColor":"#1a0b24","tertiaryColor":"#12081a","fontFamily":"ui-monospace, SF Mono, Menlo, monospace","clusterBkg":"#12081a","clusterBorder":"#9b5de5","edgeLabelBackground":"#1a0b24"}}}%%
-flowchart LR
-    subgraph AGENTS["🧟 Agents · separate processes, one Relay identity each"]
-        W["👻 <b>workergpt</b><br/>OpenAI · gpt-4.1-mini<br/><i>heartbeat every 2s</i>"]:::gpt
-        C["👁️ <b>standbyclaude</b><br/>Anthropic · Claude<br/><i>offline until needed</i>"]:::claude
+%%{init: {"theme":"base","flowchart":{"curve":"basis","nodeSpacing":40,"rankSpacing":55,"wrappingWidth":330},"themeVariables":{"primaryColor":"#2a1238","primaryTextColor":"#ffe8cc","primaryBorderColor":"#f59a3b","lineColor":"#f59a3b","fontFamily":"ui-monospace, SF Mono, Menlo, monospace","fontSize":"15px","clusterBkg":"#12081a","clusterBorder":"#9b5de5","edgeLabelBackground":"#1a0b24","titleColor":"#f59a3b"}}}%%
+flowchart TB
+    W["👻 <b>workergpt</b><br/>OpenAI · gpt-4.1-mini<br/><i>heartbeat every 2s</i>"]:::gpt
+    C["👁️ <b>standbyclaude</b><br/>Anthropic · Claude<br/><i>offline until needed</i>"]:::claude
+
+    subgraph TERSE["⚰️ Terse"]
+        A["<b>LeaseTask</b> · Durable Actor, one per task<br/>@Persisted ledger · epoch fence<br/>⏰ alarm = 8s lease"]:::terse
     end
 
-    subgraph TERSE["⚰️ Terse Durable Actors"]
-        A["<b>LeaseTask actor</b><br/>one per task<br/>@Persisted ledger · epoch fence<br/>⏰ alarm = 8s lease"]:::terse
+    subgraph RELAY["🕸️ Agent Relay"]
+        direction LR
+        CH["📜 <b>#task channel</b><br/>checkpoints · shared history"]:::relay
+        DM["📬 <b>DM inbox</b><br/>waits while offline"]:::relay
     end
 
-    subgraph RELAY["🕸️ Agent Relay · cast.agentrelay.com"]
-        CH["#task-refund…<br/><b>checkpoint channel</b><br/>shared history"]:::relay
-        DM["📬 <b>DM inbox</b><br/>queued while offline"]:::relay
-        OB["👀 observer stream<br/>ot_live_ token"]:::relay
-    end
+    D["🎃 <b>Afterlife dispatcher</b><br/>alarm → handoff DM<br/>idempotency key taskId:epoch"]:::server
+    OUT[("💸 <b>refund</b><br/>exactly once")]:::outbox
+    B["🖥️ <b>board</b> · live SSE + controls"]:::board
 
-    subgraph AFTER["🎃 Afterlife server · always on"]
-        D["<b>dispatcher</b><br/>alarm → handoff DM<br/>idempotency key taskId:epoch"]:::server
-        B["<b>board</b><br/>SSE /events · live controls"]:::server
-    end
-
-    OUT[("💸 outbox.jsonl<br/>refund · exactly once")]:::outbox
-
-    W -- "heartbeat · commit {epoch, step}" --> A
-    W -- "checkpoint after each commit" --> CH
-    A -- "⏰ onAlarm → LOST, epoch++" --> D
-    D -- "HANDOFF: resume at step 4" --> DM
-    DM -- "drain on boot" --> C
-    CH -- "messages.list → rebuild steps 1-3" --> C
-    C -- "claim(epoch 2) · commit steps 4-6" --> A
-    A -- "step 6 commits once" --> OUT
-    CH & DM --> OB --> B
-    A --> B
+    W == "① heartbeat · commit {epoch, step}" ==> A
+    W -- "② checkpoint after each commit" --> CH
+    A == "③ ⏰ onAlarm → LOST · epoch++" ==> D
+    D -- "④ HANDOFF: resume at step 4" --> DM
+    DM -- "⑤ drain on boot" --> C
+    CH -- "⑤ rebuild steps 1-3" --> C
+    C == "⑥ claim epoch 2 · commit steps 4-6" ==> A
+    A == "step 6 commits once" ==> OUT
+    RELAY -. "observer stream" .-> B
+    TERSE -. "ledger" .-> B
 
     classDef gpt fill:#0f2a1c,stroke:#7CFC9A,color:#d8ffe6,stroke-width:2px
     classDef claude fill:#24133a,stroke:#c79bff,color:#f1e4ff,stroke-width:2px
     classDef terse fill:#3a0f0a,stroke:#de4b2c,color:#ffd9cc,stroke-width:3px
     classDef relay fill:#3a2208,stroke:#f59a3b,color:#ffe8cc,stroke-width:2px
     classDef server fill:#1a0b24,stroke:#9b5de5,color:#ead9ff,stroke-width:2px
+    classDef board fill:#12081a,stroke:#9b5de5,color:#ead9ff,stroke-dasharray:4 3
     classDef outbox fill:#0b0710,stroke:#7CFC9A,color:#7CFC9A,stroke-width:3px
 ```
 
