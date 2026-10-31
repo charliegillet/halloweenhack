@@ -1,0 +1,20 @@
+{
+  "name": "afterlife",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "seed": "tsx agents/seed.ts",
+    "reset": "tsx agents/seed.ts --reset",
+    "spike": "tsx agents/spike.ts",
+    "relay:local": "npx -y @relaycast/engine@12.2.1 --db ./relay.db --port 8787"
+  },
+  "dependencies": {
+    "@agent-relay/sdk": "14.0.0",
+    "tsx": "4.23.15",
+    "zod": "4.6.7"
+  }
+}
