@@ -171,7 +171,12 @@ const server = createServer(async (req, res) => {
           const channel = `task-${b.taskId}`;
           channels.set(b.taskId, channel);
           // background: hosted Relay can take seconds; the worker creates-or-joins the channel itself before posting
-          if (relay) relay.ensureChannel(channel, `afterlife task ${b.taskId}`).catch((e) => console.warn('[server] ensureChannel', e.message));
+          if (relay) {
+            const r = relay;
+            r.ensureChannel(channel, `afterlife task ${b.taskId}`)
+              .catch(() => new Promise((ok) => setTimeout(ok, 2500)).then(() => r.ensureChannel(channel)))
+              .catch((e) => console.warn('[server] ensureChannel', e.message));
+          }
           const task = await lease.start(b.taskId, b.owner, b.vendor, { totalSteps: 6 });
           touch(b.owner);
           return json(res, 200, { ok: true, task, channel });
