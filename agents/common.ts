@@ -31,7 +31,7 @@ export const log = (who: string, ...a: unknown[]) => console.log(`[${new Date().
 // ---------------------------------------------------------------- the job
 export const FACTS = `FACT SHEET (Hollow Pines Hotel, refund desk)
 Guest: Mina Okafor. Booking HH-1031. Room 13. 2 nights, 29-31 Oct, $240/night, total $480 paid on card.
-Complaint (received 31 Oct 07:12): "Something in room 13 knocked on the wardrobe from inside every night at 3:03am and the room went ice cold. I barely slept. Front desk moved me to room 7 at 1:40am on the second night. I want my money back."
+Complaint (received 31 Oct 07:12): "${process.env.COMPLAINT?.trim() || 'Something in room 13 knocked on the wardrobe from inside every night at 3:03am and the room went ice cold. I barely slept. Front desk moved me to room 7 at 1:40am on the second night. I want my money back.'}"
 Night log: 29 Oct - disturbance logged by night porter at 03:03, no fix. 30 Oct - disturbance at 03:03, guest moved to room 7 at 01:40 (before it started).
 Policy HP-7 "Unresolved disturbance": refund 50% of each affected night. A night counts as affected only if the guest stayed in the disturbed room past 03:00. Refund cap $300 per booking. Refunds over $200 need a manager note. A refund is issued exactly once per booking.`;
 
