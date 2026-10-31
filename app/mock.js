@@ -42,9 +42,11 @@
     ledger("commit", `commit ok · epoch ${task.epoch} · step ${step} · ${author}`);
     task.steps.push({ step, author, vendor, epoch: task.epoch, text, relayMsgId: null });
     task.step = step; pushTask();
+    const mine = task;
     setTimeout(() => {
+      if (task !== mine) return;
       const id = relay(author, `checkpoint step ${step}: ${text}`, { kind: "checkpoint", taskId, epoch: task.epoch, step, text });
-      task.steps.find((s) => s.step === step).relayMsgId = id; pushTask();
+      const s = task.steps.find((x) => x.step === step); if (s) { s.relayMsgId = id; pushTask(); }
     }, 260);
   }
 
