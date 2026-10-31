@@ -20,7 +20,7 @@ if [ "${ZOMBIE:-0}" = "1" ]; then ROLE=workergptb; else ROLE=workergpt; fi
 echo "[demo] task $TASK: starting $ROLE (OpenAI)"
 node --import tsx agents/worker.ts --name $ROLE --task "$TASK" > logs/worker.log 2>&1 &
 WPID=$!
-node scripts/wait.mjs "$TASK" step3 120
+WATCH_PID=$WPID node scripts/wait.mjs "$TASK" step3 120 || { echo "[demo] worker failed, see logs/worker.log"; tail -5 logs/worker.log; exit 1; }
 if [ "${ZOMBIE:-0}" = "1" ]; then
   echo "[demo] kill -STOP $WPID (worker frozen mid step 4)"; kill -STOP $WPID
 else
