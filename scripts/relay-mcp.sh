@@ -15,7 +15,7 @@ export RELAY_AGENT_NAME="${RELAY_AGENT_NAME:-operator$(read_json runId)}"
 export RELAY_AGENT_TYPE="${RELAY_AGENT_TYPE:-human}"
 export RELAYCAST_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
 if [ "${1:-}" = "official" ]; then
-  export RELAY_WORKSPACE_KEY="$RELAY_API_KEY"
+  export RELAY_WORKSPACE_KEY="$RELAY_API_KEY"; unset RELAY_AGENT_NAME RELAY_AGENT_TYPE # let the session pick its own identity via register_agent
   exec npx -y agent-relay@15.0.1 mcp
 fi
 exec npx -y @relaycast/mcp@12.3.0
