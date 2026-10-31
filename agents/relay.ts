@@ -183,7 +183,7 @@ export const drainDms = () => cur().drainDms();
 
 // ---------- admin / observer (workspace key lives only in tokens/workspace.json) ----------
 async function rest(path: string, init: RequestInit & { key: string }) {
-  const res = await fetch(`${baseUrl()}/v1${path}`, {
+  const res = await fetch(`${baseUrl()}/v1${path}`, { signal: AbortSignal.timeout(15000),
     ...init,
     headers: { 'content-type': 'application/json', authorization: `Bearer ${init.key}`, ...(init.headers ?? {}) },
   });
