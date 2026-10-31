@@ -34,7 +34,7 @@ code { color: var(--pumpkin); }
   position: relative; z-index: 1;
   height: 100vh;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(0, 190px);
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 190px);
   gap: 14px;
   padding: 14px 22px 16px;
 }
@@ -217,6 +217,59 @@ li.heartbeat .x { color: var(--dim); }
   .panel { max-height: 70vh; }
   .wordmark { font-size: 34px; }
 }
+
+/* ---- story caption ---- */
+.story {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 18px;
+  padding: 9px 20px; border-radius: 16px;
+  background: rgba(16, 9, 32, 0.62); border: 1px solid var(--rim);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  transition: border-color .6s, box-shadow .6s;
+}
+.story .cap { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 14px rgba(0,0,0,.5); }
+.story .cap.in { animation: capin .55s ease-out; }
+@keyframes capin { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } }
+.story .cap code { font-size: 18px; color: var(--bad); }
+.story .cap .v.openai { color: var(--gpt); }
+.story .cap .v.claude { color: var(--claude); }
+.story .sub { font-size: 12.5px; color: var(--muted); white-space: nowrap; text-align: right; }
+.story .zb { color: var(--warn); font-weight: 600; margin-left: 8px; padding: 1px 9px; border-radius: 999px; border: 1px solid rgba(255,207,90,.5); background: rgba(255,207,90,.1); }
+.pips { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+.pips li { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid var(--rim); transition: background .4s, box-shadow .4s; }
+.pips li.past { background: var(--dim); }
+.pips li.cur { background: var(--pumpkin); box-shadow: 0 0 10px var(--pumpkin); }
+.story[data-stage="2"], .story[data-stage="3"] { border-color: rgba(255,93,93,.55); box-shadow: 0 0 26px rgba(255,93,93,.25); }
+.story[data-stage="2"] .cap, .story[data-stage="3"] .cap { color: #ffb0b0; }
+.story[data-stage="4"] { border-color: rgba(245,154,59,.55); }
+.story[data-stage="5"] { border-color: rgba(239,143,99,.55); }
+.story[data-stage="6"] { border-color: rgba(181,144,255,.6); box-shadow: 0 0 30px rgba(181,144,255,.28); }
+.story[data-stage="6"] .pips li { background: var(--violet); box-shadow: 0 0 8px var(--violet); }
+
+/* ---- handoff fx ---- */
+.ghost.souldrift svg { animation: drift 1.4s ease-out; }
+@keyframes drift { 0% { transform: none; opacity: 1; filter: none; } 35% { transform: translateY(-14px) scale(1.05); opacity: .9; filter: drop-shadow(0 0 22px #ff5d5d); } 100% { transform: translateY(-4px); opacity: 1; } }
+.panel.tasks.redflash { animation: redflash 1.1s ease-out; }
+@keyframes redflash { 0% { box-shadow: 0 0 0 2px rgba(255,93,93,.9), 0 0 60px rgba(255,93,93,.6), inset 0 0 80px rgba(255,93,93,.35); } 100% { box-shadow: 0 14px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06); } }
+.soul {
+  position: fixed; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%; pointer-events: none; z-index: 50;
+  background: radial-gradient(circle, #fff 0 20%, #ffd9b8 35%, rgba(245,154,59,.6) 60%, rgba(245,154,59,0) 72%);
+  box-shadow: 0 0 22px 8px rgba(255,190,130,.55), 0 0 60px 18px rgba(239,143,99,.35);
+}
+.ghost.ensouled svg { animation: ensoul 1s ease-out, bob 4.2s ease-in-out infinite -2.1s; }
+@keyframes ensoul { 0% { filter: drop-shadow(0 0 34px #ffd9b8) brightness(1.4); transform: scale(1.12); } 100% { filter: drop-shadow(0 0 16px #ef8f6388); transform: none; } }
+
+/* ---- ledger collapse / rejections ---- */
+.rows .xn { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.1); color: var(--ink); margin-right: 2px; }
+.rows li.rejected { background: rgba(255,93,93,.12); border-left: 3px solid var(--bad); border-radius: 6px; padding-left: 6px; margin: 1px 0; }
+.rows li.rejected .xn { background: var(--bad); color: #1a0508; }
+.rows li.alarm { background: rgba(255,93,93,.07); border-radius: 6px; }
+
+/* ---- final ---- */
+.panel.outbox.final { border-color: rgba(142,240,160,.7); animation: finalglow 2.4s ease-in-out infinite; }
+.panel.outbox.final .bigcount { font-size: 21px; }
+.panel.outbox.final .bigcount small { font-size: 14px; font-weight: 700; color: var(--ok); }
+@keyframes finalglow { 0%, 100% { box-shadow: 0 0 22px rgba(142,240,160,.28), inset 0 0 24px rgba(142,240,160,.08); } 50% { box-shadow: 0 0 46px rgba(142,240,160,.55), inset 0 0 34px rgba(142,240,160,.16); } }
 
 .chip > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
