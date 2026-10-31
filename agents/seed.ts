@@ -6,6 +6,27 @@ import { randomBytes } from 'node:crypto';
 import { ROLES, baseUrl, readJson, writeJson, createObserverToken, getWorkspace, type RunInfo } from './relay.ts';
 
 const reset = process.argv.includes('--reset');
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Hosted can 503 (database_overloaded). Retry; if a retried create already landed, rotate (strict:false) to get a token.
+async function registerWithRetry(ws: AgentRelay, name: string) {
+  let lastErr: any;
+  for (let i = 0; i < 6; i++) {
+    try {
+      return await ws.workspace.register({ name, type: 'agent' }, { strict: i === 0 || !/exist/i.test(lastErr?.message ?? '') ? true : false });
+    } catch (e: any) {
+      lastErr = e;
+      if (/already exists/i.test(e.message) && i > 0) {
+        return await ws.workspace.register({ name, type: 'agent' }, { strict: false });
+      }
+      if (!e.retryable && e.status !== 503 && e.status !== 429) throw e;
+      const wait = e.retryAfterMs ?? 2000 * (i + 1);
+      console.warn(`[seed] register ${name} -> ${e.status ?? ''} ${e.rawCode ?? e.message}; retry in ${wait}ms`);
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
 
 export async function seed(opts: { reset?: boolean } = {}): Promise<RunInfo> {
   const existing = readJson<RunInfo>('run.json');
@@ -23,7 +44,7 @@ export async function seed(opts: { reset?: boolean } = {}): Promise<RunInfo> {
   const names = {} as RunInfo['names'];
   for (const role of ROLES) {
     const name = `${role}${runId}`; // NO hyphens in agent names
-    const client: any = await ws.workspace.register({ name, type: 'agent' }, { strict: true });
+    const client: any = await registerWithRetry(ws, name);
     const token = client.token ?? client.identity?.token ?? client.apiToken;
     if (!token) throw new Error(`no token for ${name}; keys: ${Object.keys(client)}`);
     writeJson(`${role}.token.json`, { role, name, id: client.id, token });
