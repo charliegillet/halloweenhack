@@ -22,11 +22,19 @@
     "actor:dev": "cd actor && ~/.bun/bin/bunx durable-actors dev",
     "actor:generate": "cd actor && ~/.bun/bin/bunx durable-actors generate --out-dir generated",
     "server:terse": "LEASE_BACKEND=terse node --import tsx server/index.ts",
-    "demo:terse": "LEASE_BACKEND=terse bash scripts/demo.sh"
+    "demo:terse": "LEASE_BACKEND=terse bash scripts/demo.sh",
+    "relay": "bash scripts/relaycast.sh",
+    "relay:agents": "bash scripts/relaycast.sh agent.list",
+    "relay:channels": "AS=afterlife bash scripts/relaycast.sh channel.list",
+    "relay:observer": "bash scripts/agent-relay.sh observer list"
   },
   "dependencies": {
     "@agent-relay/sdk": "14.0.0",
     "tsx": "4.23.15",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "agent-relay": "15.0.1",
+    "relaycast": "12.3.0"
   }
 }
