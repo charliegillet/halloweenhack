@@ -249,6 +249,10 @@ STEP_DELAY_MS=2500 STANDBY_DELAY=6 OPEN=0 npm run demo
 | `npm run spike` | Agent Relay smoke test: register, reconnect, channel metadata, offline DM drain, observer |
 | `npm run reset` | Fresh Relay workspace and run ID |
 | `npm run relay:local` | Local Relay engine fallback (`RELAY_BASE_URL=http://localhost:8787 npm run reset`) |
+| `npm run relay -- <tool> [--arg v]` | 🔮 `relaycast` CLI against the hosted workspace (`npm run relay -- tools` lists them; `AS=afterlife` acts as an agent) |
+| `npm run relay:agents` | 👻 List every agent haunting the workspace |
+| `npm run relay:channels` | 🕯️ List channels (as `afterlife`) |
+| `npm run relay:observer` | 👁️ List observer tokens via the official `agent-relay` CLI (read-only, never prints the link secret) |
 
 **Control API** (what the board's buttons call): `POST /control/run {complaint?, zombie?}` · `POST /control/kill` · `POST /control/freeze` · `POST /control/thaw` · `POST /control/standby` · `GET /control/state`. Board feed: `GET /events` (SSE). Logs: `logs/`. Side effect: `outbox.jsonl`.
 
