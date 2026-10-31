@@ -58,10 +58,17 @@
       }
       case "ledger": {
         const last = S.ledger[S.ledger.length - 1];
+        const key = `${e.kind}|${e.taskId}|${String(e.text ?? "").replace(/\d+(\.\d+)?/g, "#")}`;
+        let dup = -1;
+        if (e.kind !== "heartbeat") for (let i = S.ledger.length - 1; i >= Math.max(0, S.ledger.length - 10); i--) if (S.ledger[i].key === key) { dup = i; break; }
         if (e.kind === "heartbeat" && last && last.kind === "heartbeat" && last.taskId === e.taskId) {
           Object.assign(last, { text: e.text, ts: e.ts, count: last.count + 1, upd: true });
+        } else if (dup >= 0) {
+          const r = S.ledger.splice(dup, 1)[0];
+          Object.assign(r, { text: e.text, ts: e.ts, count: r.count + 1, upd: true, move: true });
+          S.ledger.push(r);
         } else {
-          S.ledger.push({ id: ++seq, kind: e.kind, taskId: e.taskId, text: e.text, ts: e.ts, count: 1 });
+          S.ledger.push({ id: ++seq, key, kind: e.kind, taskId: e.taskId, text: e.text, ts: e.ts, count: 1 });
           if (S.ledger.length > 300) S.ledger.shift();
         }
         if (e.kind === "rejected") S.fenced.add(e.taskId);
@@ -89,7 +96,7 @@
   // ---------------------------------------------------------------- render
   function render() {
     dirty = false;
-    renderTasks(); renderRelay(); renderLedger(); renderOutbox(); renderProcs(); updateGhostStates();
+    renderTasks(); renderRelay(); renderLedger(); renderOutbox(); renderProcs(); updateGhostStates(); renderStory();
   }
 
   function badgeFor(t) {
@@ -193,8 +200,10 @@
       if (li && !r.upd) continue;
       r.upd = false;
       if (!li) { li = document.createElement("li"); els.ledger.set(r.id, li); list.prepend(li); }
-      li.className = r.kind;
-      li.innerHTML = `<span class="t">${hms(r.ts)}</span><span class="k ${esc(r.kind)}">${esc(r.kind)}</span><span class="x" title="${esc(r.text)}">${esc(r.text)}${r.count > 1 ? ` <span style="opacity:.6">×${r.count}</span>` : ""}</span>`;
+      else if (r.move) { r.move = false; list.prepend(li); }
+      li.className = r.kind + (r.count > 1 && r.kind !== "heartbeat" ? " bump" : "");
+      li.innerHTML = `<span class="t">${hms(r.ts)}</span><span class="k ${esc(r.kind)}">${esc(r.kind)}</span><span class="x" title="${esc(r.text)}">${r.count > 1 ? `<span class="xn">×${r.count}</span> ` : ""}${esc(r.text)}</span>`;
+      if (r.count > 1 && r.kind !== "heartbeat") { li.style.animation = "none"; void li.offsetWidth; li.style.animation = ""; }
     }
     while (list.children.length > 120) { const last = list.lastElementChild; for (const [k, v] of els.ledger) if (v === last) els.ledger.delete(k); last.remove(); }
   }
@@ -209,6 +218,8 @@
     }
     const n = S.outbox.length, c = $("#outbox-count");
     c.className = "bigcount " + (n === 0 ? "zero" : n === 1 ? "one" : "many");
+    const done = [...S.tasks.values()].some((t) => t.state === "DONE");
+    $(".panel.outbox").classList.toggle("final", done && n === 1);
     c.innerHTML = n > 1 ? `refund issued: <b>${n}</b> times · DOUBLE REFUND` : `refund issued: <b>${n}</b> time${n === 1 ? "" : "s"}${n === 1 ? " <small>✓ exactly once</small>" : ""}`;
   }
 
@@ -229,6 +240,73 @@
       html.push(chip(p.name, cls, st, sub));
     }
     $("#procs").innerHTML = html.join("");
+  }
+
+  // ---------------------------------------------------------------- story caption (derived from state)
+  const STORY = [
+    "waiting for a task…",
+    "① GPT agent working the refund <span class=\"v openai\">(OpenAI)</span>",
+    "② GPT killed mid-task <code>kill -9</code>",
+    "③ lease expired — presumed dead, attempt 2",
+    "④ handoff DM waiting in Agent Relay — Claude is offline",
+    "⑤ Claude boots, drains the DM, rebuilds steps 1–3 from Relay history",
+    "⑥ finished by <span class=\"v claude\">Claude</span> — refund issued exactly once",
+  ];
+  let storyStage = -1;
+  function storyState() {
+    const t = [...S.tasks.values()].pop();
+    if (!t) return { stage: 0 };
+    const procs = [...S.procs.values()];
+    const wDown = procs.some((p) => role(p.name) === "worker" && p.status === "down" && S.everUp.has(p.name));
+    const cUp = procs.some((p) => role(p.name) === "claude" && p.status === "up");
+    const cOwns = vend(t.vendor, t.owner) === "claude";
+    const dm = [...S.relay.values()].some((m) => (m.data || {}).kind === "dm" || (m.data || {}).resumeFromStep != null);
+    const committed = new Set(t.steps.map((s) => s.step)).size;
+    const fenced = S.fenced.has(t.taskId);
+    let stage, sub = "";
+    if (t.state === "DONE") { stage = 6; sub = `6/6 steps · ${S.outbox.length === 1 ? "outbox: 1 refund" : `outbox: ${S.outbox.length} refunds`}`; }
+    else if (cUp || cOwns) { stage = 5; sub = cOwns ? `claimed attempt ${t.epoch} · resumed at step ${Math.min(6, (Math.max(0, ...t.steps.filter((s) => s.epoch < t.epoch).map((s) => s.step)) || 0) + 1)} · ${committed}/6 committed` : "draining queued DM…"; }
+    else if (t.state === "LOST" && dm) { stage = 4; sub = `${committed}/6 steps committed · checkpoints safe in Relay`; }
+    else if (t.state === "LOST" || t.epoch > 1) { stage = 3; sub = t.detectLatencyMs != null ? `no heartbeat for ${(t.detectLatencyMs / 1000).toFixed(1)}s` : ""; }
+    else if (wDown) { stage = 2; sub = "heartbeats stopped · lease draining"; }
+    else { stage = 1; sub = `${committed}/6 steps committed · heartbeat every 2s`; }
+    return { stage, sub, fenced: fenced && stage >= 5 };
+  }
+  function renderStory() {
+    const st = storyState(), box = $("#story"), cap = $("#story-cap");
+    if (st.stage !== storyStage) {
+      storyStage = st.stage;
+      cap.innerHTML = STORY[st.stage];
+      box.dataset.stage = st.stage;
+      cap.classList.remove("in"); void cap.offsetWidth; cap.classList.add("in");
+    }
+    $("#story-sub").innerHTML = esc(st.sub || "") + (st.fenced ? ` <span class="zb">✕ late write from the old agent blocked</span>` : "");
+    [...$("#story-pips").children].forEach((li, i) => { li.className = i + 1 < st.stage ? "past" : i + 1 === st.stage ? "cur" : ""; });
+  }
+
+  // ---------------------------------------------------------------- handoff fx
+  for (const [sel, cls] of [["#ghost-worker", "souldrift"], ["#ghost-claude", "ensouled"], [".panel.tasks", "redflash"]])
+    $(sel).addEventListener("animationend", (e) => { if (/^(drift|ensoul|redflash)$/.test(e.animationName)) $(sel).classList.remove(cls); });
+  function fxDeath() {
+    const g = $("#ghost-worker");
+    g.classList.remove("souldrift"); void g.offsetWidth; g.classList.add("souldrift");
+    const p = $(".panel.tasks"); p.classList.remove("redflash"); void p.offsetWidth; p.classList.add("redflash");
+  }
+  function fxSoul() {
+    const a = $("#ghost-worker svg").getBoundingClientRect(), b = $("#ghost-claude svg").getBoundingClientRect();
+    const x0 = a.left + a.width / 2, y0 = a.top + a.height * 0.4, x1 = b.left + b.width / 2, y1 = b.top + b.height * 0.4;
+    const orb = document.createElement("div"); orb.className = "soul";
+    document.body.appendChild(orb);
+    const kf = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12, x = lerp(x0, x1, t), y = lerp(y0, y1, t) - Math.sin(t * Math.PI) * 70;
+      kf.push({ transform: `translate(${x - 12}px, ${y - 12}px) scale(${(0.6 + Math.sin(t * Math.PI) * 0.7).toFixed(2)})`, opacity: t < 0.9 ? 1 : 0, offset: t });
+    }
+    const anim = orb.animate(kf, { duration: 1100, easing: "ease-in-out" });
+    anim.onfinish = () => {
+      orb.remove();
+      const c = $("#ghost-claude"); c.classList.remove("ensouled"); void c.offsetWidth; c.classList.add("ensouled");
+    };
   }
 
   function setConn(s) {
@@ -299,6 +377,10 @@
     else if (done && cOwns) set(c, "alive", "finished it", 1);
     else if (cOwns) set(c, "alive", "taken over", 1);
     else set(c, "alive", "draining DM", 1);
+    if (w.state === "dead" && w.prevState && w.prevState !== "dead") fxDeath();
+    if (cOwns && !done && !c.ownedFx) { c.ownedFx = true; fxSoul(); }
+    if (!cOwns) c.ownedFx = false;
+    w.prevState = w.state;
   }
 
   function tickGhosts(now) {
@@ -390,6 +472,9 @@
   render();
 
   const MOCK = new URLSearchParams(location.search).has("mock");
+  const showBackend = (b) => { if (b === "terse") { const el = $("#backend"); el.textContent = "Terse Durable Actor · lease 8s · alarm-driven"; el.classList.add("terse"); } };
+  if (MOCK) showBackend("terse");
+  else fetch("/health").then((r) => (r.ok ? r.json() : null)).then((h) => h && showBackend(h.backend)).catch(() => {});
   if (!MOCK && typeof EventSource !== "undefined") {
     const es = new EventSource("/events");
     const on = (ev) => { try { ingest(JSON.parse(ev.data)); } catch (err) { console.warn("bad event", err); } };
