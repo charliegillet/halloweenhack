@@ -87,7 +87,9 @@ async function main() {
   live.length = 0;
   const p2 = await W.post(ch, 'step 2', { kind: 'checkpoint', taskId: `t${r}`, epoch: 1, step: 2, text: 'x' });
   const d3 = await W.dm(sName, 'live dm', { ping: 1 });
-  await sleep(2500);
+  const tLive = Date.now();
+  while (Date.now() - tLive < 12000 && !live.some((x) => x.m.id === d3.id && x.m.data)) await sleep(250);
+  console.log(`[spike] live dm hydrated after ${Date.now() - tLive}ms`);
   rec('live channel message.created', live.some((x) => x.m.id === p2.id), live.map((x) => `${x.type}:${x.m.from}:${JSON.stringify(x.m.data)}`).join(' | '));
   rec('live dm.received (from=envelope.from.name, data hydrated)', live.some((x) => x.m.id === d3.id && x.type === 'dm.received' && x.m.from === wName && x.m.data?.ping === 1), '');
 
@@ -100,13 +102,13 @@ async function main() {
   try {
     const res = await fetch(`${url}/v1/observer-tokens`, {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ name: 'spikeboard', scopes: ['stream:read', 'messages:read', 'channels:read', 'dms:read'], filters: { include_dms: true } }),
+      signal: AbortSignal.timeout(10000), body: JSON.stringify({ name: 'spikeboard', scopes: ['stream:read', 'messages:read', 'channels:read', 'dms:read'], filters: { include_dms: true } }),
     });
     const b: any = await res.json();
     const ot = b?.data?.token ?? '';
     rec('POST /v1/observer-tokens', res.ok && String(ot).startsWith('ot_live_'), `status=${res.status} keys=${Object.keys(b?.data ?? b?.error ?? {}).join(',')}`);
     if (ot) {
-      const mres = await fetch(`${url}/v1/channels/${ch}/messages?limit=5`, { headers: { authorization: `Bearer ${ot}` } });
+      const mres = await fetch(`${url}/v1/channels/${ch}/messages?limit=5`, { headers: { authorization: `Bearer ${ot}` }, signal: AbortSignal.timeout(10000) });
       const mb: any = await mres.json();
       rec('observer token reads channel messages (REST)', mres.ok, `status=${mres.status} n=${Array.isArray(mb?.data) ? mb.data.length : JSON.stringify(mb).slice(0, 120)}`);
       // WS observe
@@ -118,7 +120,7 @@ async function main() {
       await sleep(500);
       await W.post(ch, 'observer ping', { kind: 'ping' });
       await W.dm(sName, 'observer dm ping', { kind: 'ping' });
-      await sleep(2000);
+      await sleep(4000);
       sock.close();
       rec('observer WS sees events', seen.length > 0, seen.join(','));
     }
