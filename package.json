@@ -16,7 +16,13 @@
     "standby": "node --import tsx agents/standby.ts --name standbyclaude",
     "demo": "bash scripts/demo.sh",
     "demo:zombie": "ZOMBIE=1 bash scripts/demo.sh",
-    "test:lease": "tsx lease/test.ts"
+    "test:lease": "if [ \"$LEASE_BACKEND\" = terse ]; then tsx actor/test-lease-terse.ts; else tsx lease/test.ts; fi",
+    "test:lease:terse": "tsx actor/test-lease-terse.ts",
+    "actor:install": "cd actor && ~/.bun/bin/bun install",
+    "actor:dev": "cd actor && ~/.bun/bin/bunx durable-actors dev",
+    "actor:generate": "cd actor && ~/.bun/bin/bunx durable-actors generate --out-dir generated",
+    "server:terse": "LEASE_BACKEND=terse node --import tsx server/index.ts",
+    "demo:terse": "LEASE_BACKEND=terse bash scripts/demo.sh"
   },
   "dependencies": {
     "@agent-relay/sdk": "14.0.0",
