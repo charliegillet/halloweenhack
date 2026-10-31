@@ -151,7 +151,7 @@ export async function connect(roleOrName: string): Promise<RelayConn> {
   if (!tok) throw new Error(`tokens/${role}.token.json missing: run \`npm run seed\``);
   process.env.RELAY_BASE_URL ||= run.baseUrl;
   // No workspace key in agent processes: the at_live_ token is enough.
-  const relay = new AgentRelay({ baseUrl: baseUrl() });
+  const relay = new AgentRelay({ baseUrl: baseUrl(), agentToken: tok.token });
   const client = await relay.workspace.reconnect({ apiToken: tok.token });
   current = new RelayConn(tok.name, role, relay, client);
   return current;
