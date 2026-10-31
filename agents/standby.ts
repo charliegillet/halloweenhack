@@ -12,11 +12,19 @@ await api('/proc', { name, status: 'up', pid: process.pid });
 log(name, `pid ${process.pid}; online. draining queued DMs...`);
 
 const isHandoff = (m: RelayMsg) => m?.data?.kind === 'handoff' && m.data.taskId;
-let dm: RelayMsg | undefined = (await conn.drainDms()).filter(isHandoff).pop();
+// Only act on a handoff the lease authority still considers open (LOST at that epoch); ignore stale ones from old runs.
+async function live(m: RelayMsg) {
+  const r = await api(`/task/${m.data!.taskId}`).catch(() => null);
+  return !!r?.task && r.task.state === 'LOST' && r.task.epoch === m.data!.epoch;
+}
+const queued = (await conn.drainDms()).filter(isHandoff).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+log(name, `drained ${queued.length} queued handoff DM(s)`);
+let dm: RelayMsg | undefined;
+for (const m of queued) { if (await live(m)) { dm = m; break; } log(name, `ignoring stale handoff ${m.id} (task ${m.data!.taskId} e${m.data!.epoch})`); }
 if (!dm) {
-  log(name, 'no queued handoff; listening live');
+  log(name, 'no open handoff queued; listening live');
   dm = await new Promise<RelayMsg>((resolve) => {
-    conn.onAny((m) => { if (m.type === 'dm' && isHandoff(m)) resolve(m); });
+    conn.onAny(async (m) => { if (m.type === 'dm' && isHandoff(m) && (await live(m))) resolve(m); });
   });
 }
 const { taskId, epoch: dmEpoch, resumeFromStep, channel } = dm.data as any;
