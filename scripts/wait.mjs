@@ -10,7 +10,9 @@ const ok = (t) => {
   if (cond === 'claimed') return t.state === 'RUNNING' && t.epoch > 1;
   return false;
 };
+const pid = Number(process.env.WATCH_PID || 0);
 while (Date.now() < end) {
+  if (pid) { try { process.kill(pid, 0); } catch { console.error(`[wait] watched pid ${pid} exited before ${cond}`); process.exit(2); } }
   try { const r = await (await fetch(`${S}/task/${taskId}`)).json(); if (ok(r.task)) { console.log(`[wait] ${cond} ok (state ${r.task.state}, epoch ${r.task.epoch}, step ${r.task.step})`); process.exit(0); } } catch {}
   await new Promise((r) => setTimeout(r, 200));
 }
