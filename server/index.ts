@@ -78,7 +78,6 @@ setInterval(() => {
 }, 500);
 function seedProcs() {
   procs.clear();
-  procs.set(AFTERLIFE, { name: AFTERLIFE, status: 'up', pid: process.pid, lastSeen: Date.now() });
   for (const r of ['workergpt', 'standbyclaude']) procs.set(fullName(r), { name: fullName(r), status: 'down', lastSeen: 0 });
 }
 seedProcs();
@@ -171,7 +170,8 @@ const server = createServer(async (req, res) => {
         case '/task/start': {
           const channel = `task-${b.taskId}`;
           channels.set(b.taskId, channel);
-          if (relay) await relay.ensureChannel(channel, `afterlife task ${b.taskId}`).catch((e) => console.warn('[server] ensureChannel', e.message));
+          // background: hosted Relay can take seconds; the worker creates-or-joins the channel itself before posting
+          if (relay) relay.ensureChannel(channel, `afterlife task ${b.taskId}`).catch((e) => console.warn('[server] ensureChannel', e.message));
           const task = await lease.start(b.taskId, b.owner, b.vendor, { totalSteps: 6 });
           touch(b.owner);
           return json(res, 200, { ok: true, task, channel });
