@@ -2,7 +2,7 @@
 // Options: &speed=2 (faster), &loop=0 (stop at the end), &zombie=0 (skip the fenced late write).
 (() => {
   const q = new URLSearchParams(location.search);
-  if (!q.has("mock") || !window.afterlife) return;
+  if (!window.AL_DEMO || !window.afterlife) return;
   const A = window.afterlife;
   const SPEED = Math.max(0.25, Number(q.get("speed")) || 1);
   const LOOP = q.get("loop") !== "0", ZOMBIE = q.get("zombie") !== "0";
