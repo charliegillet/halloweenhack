@@ -54,7 +54,7 @@ async function main() {
   const d = await W.dm(sName, 'HANDOFF: resume task', { taskId: `t${r}`, epoch: 2, resumeFromStep: 2, channel: ch, summary: 's' }, `t${r}:2`);
   rec('dm to offline agent', !!d.id, `id=${d.id}`);
   // idempotency: same key again
-  const d2 = await W.dm(sName, 'HANDOFF: resume task', { taskId: `t${r}`, epoch: 2 }, `t${r}:2`).catch((e) => ({ id: 'ERR ' + e.message }));
+  const d2 = await W.dm(sName, 'HANDOFF: resume task', { taskId: `t${r}`, epoch: 2, resumeFromStep: 2, channel: ch, summary: 's' }, `t${r}:2`).catch((e) => ({ id: 'ERR ' + e.message }));
   rec('dm idempotency key dedupes', d2.id === d.id, `first=${d.id} second=${d2.id}`);
 
   await sleep(1500);
@@ -89,7 +89,7 @@ async function main() {
   const d3 = await W.dm(sName, 'live dm', { ping: 1 });
   await sleep(2500);
   rec('live channel message.created', live.some((x) => x.m.id === p2.id), live.map((x) => `${x.type}:${x.m.from}:${JSON.stringify(x.m.data)}`).join(' | '));
-  rec('live dm.received (from=envelope.from.name)', live.some((x) => x.m.id === d3.id && x.type === 'dm.received' && x.m.from === wName), '');
+  rec('live dm.received (from=envelope.from.name, data hydrated)', live.some((x) => x.m.id === d3.id && x.type === 'dm.received' && x.m.from === wName && x.m.data?.ping === 1), '');
 
   // standby rebuilds from history
   const h2 = await S.listChannel(ch);
@@ -113,7 +113,9 @@ async function main() {
       const seen: string[] = [];
       const sock = new WebSocket(`${url.replace(/^http/, 'ws')}/v1/ws?token=${ot}`);
       sock.onmessage = (ev) => { try { seen.push(JSON.parse(String(ev.data)).type); } catch {} };
-      await new Promise((r2) => { sock.onopen = r2; setTimeout(r2, 3000); });
+      sock.onerror = (ev: any) => seen.push('ERR ' + ev?.message);
+      await new Promise((r2) => { sock.onopen = r2; setTimeout(r2, 5000); });
+      await sleep(500);
       await W.post(ch, 'observer ping', { kind: 'ping' });
       await W.dm(sName, 'observer dm ping', { kind: 'ping' });
       await sleep(2000);
