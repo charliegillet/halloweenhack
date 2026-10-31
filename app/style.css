@@ -59,6 +59,7 @@ code { color: var(--pumpkin); }
   font-size: 12px; white-space: nowrap;
 }
 .pill.subtle { color: var(--muted); }
+.pill.terse { color: var(--pumpkin); border-color: rgba(245,154,59,.45); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); display: inline-block; flex: none; }
 #conn.live .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
 #conn.mock .dot { background: var(--violet); box-shadow: 0 0 10px var(--violet); }
@@ -102,7 +103,7 @@ code { color: var(--pumpkin); }
 #tasks { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 
 /* ---- task card ---- */
-.card { display: flex; flex-direction: column; gap: 8px; }
+.card { display: flex; flex-direction: column; gap: 6px; }
 .cardhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tid { font-weight: 700; font-size: 14px; }
 .owner { color: var(--muted); font-size: 12px; }
@@ -127,10 +128,10 @@ code { color: var(--pumpkin); }
 .stats { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .stats b { color: var(--ink); font-weight: 600; }
 
-.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .step {
   display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px;
-  padding: 4px 10px; border-radius: 12px; background: var(--glass-2); border: 1px solid transparent;
+  padding: 3px 10px; border-radius: 12px; background: var(--glass-2); border: 1px solid transparent; line-height: 1.32;
   transition: background .4s, border-color .4s;
 }
 .step .n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 1px solid var(--rim); color: var(--dim); }
@@ -221,7 +222,7 @@ li.heartbeat .x { color: var(--dim); }
 /* ---- story caption ---- */
 .story {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 18px;
-  padding: 9px 20px; border-radius: 16px;
+  padding: 6px 20px; border-radius: 16px;
   background: rgba(16, 9, 32, 0.62); border: 1px solid var(--rim);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
