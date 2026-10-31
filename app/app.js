@@ -209,7 +209,7 @@
     }
     const n = S.outbox.length, c = $("#outbox-count");
     c.className = "bigcount " + (n === 0 ? "zero" : n === 1 ? "one" : "many");
-    c.innerHTML = n > 1 ? `refund issued: <b>${n}</b> times · DOUBLE REFUND` : `refund issued: <b>${n}</b> time${n === 1 ? "" : "s"}${n === 1 ? " ✓ exactly once" : ""}`;
+    c.innerHTML = n > 1 ? `refund issued: <b>${n}</b> times · DOUBLE REFUND` : `refund issued: <b>${n}</b> time${n === 1 ? "" : "s"}${n === 1 ? " <small>✓ exactly once</small>" : ""}`;
   }
 
   function renderProcs() {
