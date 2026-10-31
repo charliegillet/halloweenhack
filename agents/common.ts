@@ -72,7 +72,7 @@ export async function openaiStep(stepN: number, prior: { step: number; text: str
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model, temperature: 0, max_tokens: 200, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+        body: JSON.stringify({ model, temperature: 0, max_tokens: 260, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
         signal: AbortSignal.timeout(30000),
       });
       const j: any = await res.json();
@@ -92,13 +92,13 @@ export async function claudeStep(stepN: number, prior: { step: number; text: str
   const { system, user } = buildPrompt(stepN, prior, agent);
   const model = process.env.CLAUDE_MODEL || 'claude-haiku-5-5';
   const base = (process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, '');
-  let withTemp = true;
+  let withTemp = process.env.CLAUDE_TEMPERATURE !== 'off' && !/haiku-5|sonnet-5|opus-5/.test(model); // 5.x models reject temperature
   for (let attempt = 1; ; attempt++) {
     try {
       const res = await fetch(`${base}/v1/messages`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model, max_tokens: 200, ...(withTemp ? { temperature: 0 } : {}), system, messages: [{ role: 'user', content: user }] }),
+        body: JSON.stringify({ model, max_tokens: 260, thinking: { type: 'disabled' }, ...(withTemp ? { temperature: 0 } : {}), system, messages: [{ role: 'user', content: user }] }),
         signal: AbortSignal.timeout(30000),
       });
       const j: any = await res.json();
