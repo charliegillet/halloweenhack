@@ -12,3 +12,6 @@ lease/state.json
 lease/state.json.tmp
 outbox.jsonl
 logs/
+actor/node_modules/
+actor/.durable-actors/
+lease/*.terse-ids.json
