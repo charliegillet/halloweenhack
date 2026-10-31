@@ -310,3 +310,8 @@ body[data-mode="live"] .shell { grid-template-rows: auto auto auto minmax(0, 1fr
 /* ?shot=1 (README screenshots): no transitions so captures are crisp */
 body[data-shot] *, body[data-shot] *::before, body[data-shot] *::after { transition: none !important; }
 body[data-shot] .story .cap.in, body[data-shot] .flicker { animation: none !important; }
+
+/* link to Agent Relay's hosted observer (same workspace, read-only token) */
+.pill.relaywatch { color: var(--pumpkin); text-decoration: none; border-color: rgba(245,154,59,.45); }
+.pill.relaywatch:hover { background: rgba(245,154,59,.14); }
+body[data-mode="demo"] .pill.relaywatch { display: none; }
