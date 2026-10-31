@@ -104,7 +104,7 @@ Each part has one job:
 ## 🪦 The death and the handoff
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"background":"#0b0710","actorBkg":"#2a1238","actorBorder":"#f59a3b","actorTextColor":"#ffe8cc","actorLineColor":"#9b5de5","signalColor":"#f59a3b","signalTextColor":"#ffe8cc","labelBoxBkgColor":"#3a0f0a","labelBoxBorderColor":"#de4b2c","labelTextColor":"#ffd9cc","loopTextColor":"#ffd9cc","noteBkgColor":"#1a0b24","noteBorderColor":"#9b5de5","noteTextColor":"#ead9ff","activationBkgColor":"#3a2208","activationBorderColor":"#f59a3b","sequenceNumberColor":"#0b0710","fontFamily":"ui-monospace, SF Mono, Menlo, monospace"}}}%%
+%%{init: {"theme":"base","themeVariables":{"background":"#0b0710","actorBkg":"#2a1238","actorBorder":"#f59a3b","actorTextColor":"#ffe8cc","actorLineColor":"#9b5de5","signalColor":"#f59a3b","signalTextColor":"#e8590c","labelBoxBkgColor":"#3a0f0a","labelBoxBorderColor":"#de4b2c","labelTextColor":"#ffd9cc","loopTextColor":"#9b5de5","noteBkgColor":"#1a0b24","noteBorderColor":"#9b5de5","noteTextColor":"#ead9ff","activationBkgColor":"#3a2208","activationBorderColor":"#f59a3b","sequenceNumberColor":"#0b0710","fontFamily":"ui-monospace, SF Mono, Menlo, monospace"}}}%%
 sequenceDiagram
     autonumber
     participant W as 👻 workergpt<br/>(OpenAI)
