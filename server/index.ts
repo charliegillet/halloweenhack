@@ -211,6 +211,14 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === 'GET' && p === '/control/state') return json(res, 200, { taskId: curTask, worker: { pid: worker?.pid ?? null, alive: alive(worker), frozen: !!worker?.frozen }, standby: { pid: standby?.pid ?? null, alive: alive(standby) }, backend: lease.backend });
+    if (req.method === 'GET' && p === '/observer') {
+      // Agent Relay's hosted observer, opened with the board's read-only observer token (stream/messages/channels/dms read).
+      let ot = '';
+      try { ot = JSON.parse(readFileSync(join(ROOT, 'tokens', 'observer.token.json'), 'utf8')).token ?? ''; } catch {}
+      if (!ot) return json(res, 404, { ok: false, error: 'no observer token; run npm run seed' });
+      res.writeHead(302, { location: `https://agentrelay.com/observer?key=${encodeURIComponent(ot)}`, 'cache-control': 'no-store' });
+      return res.end();
+    }
     if (req.method === 'GET' && p === '/health') return json(res, 200, { ok: true, relay: !!relay, backend: lease.backend, afterlife: AFTERLIFE });
     if (req.method === 'GET' && p === '/procs') return json(res, 200, [...procs.values()]);
     if (req.method === 'GET' && p.startsWith('/task/')) {
