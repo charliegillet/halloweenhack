@@ -60,7 +60,7 @@
         const last = S.ledger[S.ledger.length - 1];
         const key = `${e.kind}|${e.taskId}|${String(e.text ?? "").replace(/\d+(\.\d+)?/g, "#")}`;
         let dup = -1;
-        if (e.kind !== "heartbeat") for (let i = S.ledger.length - 1; i >= Math.max(0, S.ledger.length - 10); i--) if (S.ledger[i].key === key) { dup = i; break; }
+        if (!["heartbeat", "commit", "claim", "done", "dm"].includes(e.kind)) for (let i = S.ledger.length - 1; i >= Math.max(0, S.ledger.length - 10); i--) if (S.ledger[i].key === key) { dup = i; break; }
         if (e.kind === "heartbeat" && last && last.kind === "heartbeat" && last.taskId === e.taskId) {
           Object.assign(last, { text: e.text, ts: e.ts, count: last.count + 1, upd: true });
         } else if (dup >= 0) {
@@ -265,7 +265,7 @@
     const fenced = S.fenced.has(t.taskId);
     let stage, sub = "";
     if (t.state === "DONE") { stage = 6; sub = `6/6 steps · ${S.outbox.length === 1 ? "outbox: 1 refund" : `outbox: ${S.outbox.length} refunds`}`; }
-    else if (cUp || cOwns) { stage = 5; sub = cOwns ? `claimed attempt ${t.epoch} · resumed at step ${Math.min(6, (Math.max(0, ...t.steps.filter((s) => s.epoch < t.epoch).map((s) => s.step)) || 0) + 1)} · ${committed}/6 committed` : "draining queued DM…"; }
+    else if (cUp || cOwns) { stage = 5; sub = cOwns ? `attempt ${t.epoch} · resumed at step ${Math.min(6, (Math.max(0, ...t.steps.filter((s) => s.epoch < t.epoch).map((s) => s.step)) || 0) + 1)} · ${committed}/6 committed` : "draining queued DM…"; }
     else if (t.state === "LOST" && dm) { stage = 4; sub = `${committed}/6 steps committed · checkpoints safe in Relay`; }
     else if (t.state === "LOST" || t.epoch > 1) { stage = 3; sub = t.detectLatencyMs != null ? `no heartbeat for ${(t.detectLatencyMs / 1000).toFixed(1)}s` : ""; }
     else if (wDown) { stage = 2; sub = "heartbeats stopped · lease draining"; }
@@ -280,7 +280,7 @@
       box.dataset.stage = st.stage;
       cap.classList.remove("in"); void cap.offsetWidth; cap.classList.add("in");
     }
-    $("#story-sub").innerHTML = esc(st.sub || "") + (st.fenced ? ` <span class="zb">✕ late write from the old agent blocked</span>` : "");
+    $("#story-sub").innerHTML = (st.fenced ? `<span class="zb">✕ late write from the old agent blocked</span> ` : "") + esc(st.sub || "");
     [...$("#story-pips").children].forEach((li, i) => { li.className = i + 1 < st.stage ? "past" : i + 1 === st.stage ? "cur" : ""; });
   }
 
