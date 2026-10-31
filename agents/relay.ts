@@ -121,7 +121,9 @@ export class RelayConn {
         : t === 'thread.reply' ? 'thread' : t === 'message.created' ? 'channel' : 'other';
       const m = normalize(evt.message, kind, evt.envelope?.channel?.name);
       if (evt.envelope?.from?.name) m.from = evt.envelope.from.name;
-      try { cb(m, evt); } catch (e) { console.error('[relay] listener error', e); }
+      const deliver = () => { try { cb(m, evt); } catch (e) { console.error('[relay] listener error', e); } };
+      // DM events/inbox items arrive WITHOUT metadata; hydrate from GET /v1/messages/:id.
+      if (kind === 'dm' && !m.data) this.hydrate(m).then(deliver, deliver); else deliver();
     });
   }
 
@@ -131,11 +133,22 @@ export class RelayConn {
     const items = (res?.items ?? []).filter((it: any) => it.state !== 'read');
     const out: RelayMsg[] = [];
     for (const it of items) {
-      const m = normalize(it.message, it.message?.kind === 'channel' && !it.message?.channel?.name ? 'dm' : 'dm');
+      const m = normalize(it.message, 'dm');
+      m.channel = undefined; // inbox reports DMs as kind:'channel' with a dmch_ id (#1987)
+      await this.hydrate(m);
       out.push(m);
       try { await this.client.inbox.ack({ inboxItemId: it.id, state: 'read' }); } catch {}
     }
     return out;
+  }
+
+  /** Fill m.data from the stored message (DM metadata is dropped from events and inbox items). */
+  async hydrate(m: RelayMsg): Promise<RelayMsg> {
+    try {
+      const full = await this.client.messages.get(m.id);
+      m.data = (full?.metadata as any) ?? m.data;
+    } catch (e: any) { console.warn('[relay] hydrate failed', m.id, e?.message); }
+    return m;
   }
 
   async workspaceInfo() { return this.client.workspace?.info ? this.client.workspace.info() : this.relay.workspace.info(); }
