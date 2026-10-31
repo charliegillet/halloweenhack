@@ -31,10 +31,11 @@ const stopHb = startHeartbeat(name, taskId, () => epoch, () => step);
 log(name, `CLAIMED epoch ${epoch}; lease says resume at ${c.resumeFromStep}`);
 
 // Rebuild from Relay: checkpoint posts in the task channel, kept only if the lease says that (step, epoch) committed.
-await conn.ensureChannel(channel);
-const task = await api(`/task/${taskId}`);
+const [task, history] = await Promise.all([
+  api(`/task/${taskId}`),
+  conn.ensureChannel(channel).catch(() => {}).then(() => conn.listChannel(channel, 100)),
+]);
 const committed: { step: number; epoch: number }[] = task.task.steps;
-const history = await conn.listChannel(channel, 100);
 const prior: { step: number; text: string }[] = [];
 for (const s of committed) {
   const m = history.find((h) => h.data?.kind === 'checkpoint' && h.data.step === s.step && h.data.epoch === s.epoch && !h.data.late);
@@ -43,12 +44,12 @@ for (const s of committed) {
 }
 const maxCommitted = Math.max(0, ...prior.map((p) => p.step));
 log(name, `rebuilt steps [${prior.map((p) => p.step).join(',')}] from ${history.length} Relay messages; resuming at step ${maxCommitted + 1}`);
-try {
-  await conn.post(channel, `${name} (Claude) took over task ${taskId} at epoch ${epoch}: rebuilt steps 1-${maxCommitted} from this channel, resuming at step ${maxCommitted + 1}.`,
-    { kind: 'takeover', taskId, epoch, resumeFromStep: maxCommitted + 1 });
-} catch (e: any) { log(name, 'takeover post failed', e.message); }
+conn.post(channel, `${name} (Claude) took over task ${taskId} at epoch ${epoch}: rebuilt steps 1-${maxCommitted} from this channel, resuming at step ${maxCommitted + 1}.`,
+    { kind: 'takeover', taskId, epoch, resumeFromStep: maxCommitted + 1 })
+  .then((m) => api('/relay/seen', { msg: { id: m.id, from: name, channel, text: `${name} took over at epoch ${epoch}; resuming at step ${maxCommitted + 1}`, data: { kind: 'takeover', taskId, epoch }, ts: Date.now() } }))
+  .catch((e: any) => log(name, 'takeover post failed', e.message));
 
-const r = await runSteps({ name, vendor: 'anthropic', taskId, channel, epoch, fromStep: maxCommitted + 1, prior, conn, llm: claudeStep, onStep: (n) => (step = n) });
+const r = await runSteps({ name, vendor: 'anthropic', taskId, channel, epoch, fromStep: maxCommitted + 1, prior, conn, llm: claudeStep, onStep: (n) => (step = n), asyncPosts: true });
 stopHb();
 log(name, `finished: ${r}`);
 await sleep(200);
