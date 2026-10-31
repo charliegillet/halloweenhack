@@ -7,7 +7,10 @@ export function startHeartbeat(name: string, taskId: string, getEpoch: () => num
   const h = setInterval(async () => {
     try {
       const r = await api('/lease/heartbeat', { name, taskId, epoch: getEpoch(), step: getStep(), seq: ++seq });
-      if (!r.ok) log(name, `heartbeat refused: ${r.reason} (current epoch ${r.currentEpoch})`); // a zombie doesn't know it's dead
+      if (!r.ok) {
+        log(name, `heartbeat refused: ${r.reason} (current epoch ${r.currentEpoch})`); // a zombie doesn't know it's dead
+        if (r.reason === 'done' || r.reason === 'fenced') clearInterval(h); // one refusal is enough; stop spamming the ledger
+      }
     } catch (e: any) { log(name, 'heartbeat error', e.message); }
   }, 2000);
   return () => clearInterval(h);
