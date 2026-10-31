@@ -171,7 +171,7 @@ async function control(p: string, b: any): Promise<{ code: number; out: any }> {
   switch (p) {
     case '/control/run': {
       const t = curTask ? await lease.status(curTask) : null;
-      if (alive(worker) && t && t.state !== 'DONE') return { code: 409, out: { ok: false, error: 'worker for unfinished task still alive', taskId: curTask } };
+      if (alive(worker) && (!t || t.state !== 'DONE')) return { code: 409, out: { ok: false, error: 'worker for unfinished task still alive', taskId: curTask } };
       await lease.reset();
       relayMsgs.clear(); outbox.length = 0; channels.clear(); handoffs.clear();
       seedProcs();
