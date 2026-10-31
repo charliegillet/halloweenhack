@@ -73,6 +73,7 @@ export interface Lease {
   list(): Promise<Task[]>;
   ledger(taskId?: string): LedgerRow[];
   log(taskId: string, kind: LedgerKind, text: string): void; // e.g. dispatcher records 'dm'
+  attachRelay(taskId: string, step: number, epoch: number, relayMsgId: string): boolean; // checkpoint posted after commit
   reset(taskId?: string): Promise<void>;
   close(): void;
   backend: 'local' | 'terse';
@@ -314,6 +315,15 @@ export function createLocalLease(opts: LeaseOptions = {}): Lease {
     async list() { return [...tasks.values()].map(snapshot); },
     ledger(taskId) { return taskId ? ledgerRows.filter((r) => r.taskId === taskId) : [...ledgerRows]; },
     log(taskId, kind, text) { log(taskId, kind, text); persist(); },
+    attachRelay(taskId, step, epoch, relayMsgId) {
+      const t = tasks.get(taskId);
+      const s = t?.steps.find((x) => x.step === step && x.epoch === epoch);
+      if (!t || !s) return false;
+      s.relayMsgId = relayMsgId;
+      persist();
+      emitTask(t);
+      return true;
+    },
 
     async reset(taskId) {
       if (taskId) {
