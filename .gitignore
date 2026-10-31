@@ -11,3 +11,4 @@ dist/
 lease/state.json
 lease/state.json.tmp
 outbox.jsonl
+logs/
