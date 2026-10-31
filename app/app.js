@@ -313,7 +313,7 @@
     S.conn = s;
     const el = $("#conn");
     el.className = "pill " + s;
-    el.lastElementChild.textContent = { live: "live · /events", mock: "mock replay (?mock=1)", down: "reconnecting…", connecting: "connecting" }[s] || s;
+    el.lastElementChild.textContent = { live: "live · /events", mock: "scripted replay", down: "reconnecting…", connecting: "connecting" }[s] || s;
     schedule();
   }
 
@@ -468,10 +468,18 @@
   requestAnimationFrame(frame);
 
   // ---------------------------------------------------------------- wiring
+  const MODE_DEMO = !!window.AL_DEMO;
+  // ---- mode badge + controls
+  {
+    const mp = $("#modepill"), mt = $("#modetext");
+    mp.classList.add(MODE_DEMO ? "demo" : "livemode");
+    mt.textContent = MODE_DEMO ? "SIMULATED REPLAY — scripted events, no live agents" : "LIVE — real GPT · Claude · Agent Relay · Terse";
+    $(MODE_DEMO ? "#nav-demo" : "#nav-live").classList.add("on");
+  }
   window.afterlife = { ingest, reset, setConn, state: S };
   render();
 
-  const MOCK = new URLSearchParams(location.search).has("mock");
+  const MOCK = !!window.AL_DEMO;
   const showBackend = (b) => { if (b === "terse") { const el = $("#backend"); el.textContent = "Terse Durable Actor · lease 8s · alarm-driven"; el.classList.add("terse"); } };
   if (MOCK) showBackend("terse");
   else fetch("/health").then((r) => (r.ok ? r.json() : null)).then((h) => h && showBackend(h.backend)).catch(() => {});
@@ -482,5 +490,48 @@
     es.onerror = () => setConn("down");
     es.onmessage = on;
     for (const n of ["task", "ledger", "relay", "outbox", "proc"]) es.addEventListener(n, on);
+  }
+
+  // ---------------------------------------------------------------- live controls
+  if (!MODE_DEMO) {
+    const box = $("#controls"), toastEl = $("#toast");
+    box.hidden = false;
+    let tt, st = null, off = false, busy = false;
+    const toast = (msg, bad = true) => { toastEl.textContent = msg; toastEl.className = "toast" + (bad ? " bad" : ""); toastEl.hidden = false; clearTimeout(tt); tt = setTimeout(() => (toastEl.hidden = true), 4000); };
+    const post = async (path, body) => {
+      if (busy) return; busy = true; paint();
+      try {
+        const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+        if (r.status === 404) { off = true; toast("controls unavailable (server has no " + path + ")"); }
+        else if (!r.ok) { let m = ""; try { const j = await r.json(); m = j.error || j.message || JSON.stringify(j); } catch (e) {} toast(r.status + " " + path + (m ? ": " + m : "")); }
+        else poll();
+      } catch (e) { toast("request failed: " + e.message); }
+      busy = false; paint();
+    };
+    const taskStatus = () => { const l = [...S.tasks.values()]; const t = (st && l.find((x) => x.taskId === st.taskId)) || l[l.length - 1]; return (t && t.state) || ""; };
+    function paint() {
+      const w = st && st.worker, sb = st && st.standby;
+      const alive = !!(w && w.alive), ts = String(taskStatus()).toUpperCase();
+      const done = ts === "DONE", lost = ts === "LOST";
+      const en = (id, on) => { $(id).disabled = off || busy || !st || !on; };
+      en("#b-run", !alive || done); en("#b-kill", alive);
+      en("#b-freeze", alive && !w.frozen && !!(st && st.zombie !== false)); en("#b-thaw", alive && !!w.frozen);
+      en("#b-standby", lost && !(sb && sb.alive));
+      $("#c-hint").textContent = off ? "controls unavailable" : "Start → wait for step 3 → Kill → wait for DM → Wake Claude";
+      box.classList.toggle("off", off);
+    }
+    async function poll() {
+      try {
+        const r = await fetch("/control/state", { cache: "no-store" });
+        if (r.status === 404) { off = true; st = st || {}; } else if (r.ok) { st = await r.json(); off = false; }
+      } catch (e) { /* server restarting */ }
+      paint();
+    }
+    $("#b-run").onclick = () => { const c = $("#c-complaint").value.trim(), b = {}; if (c) b.complaint = c; if ($("#c-zombie").checked) b.zombie = true; post("/control/run", b); };
+    $("#b-kill").onclick = () => post("/control/kill");
+    $("#b-freeze").onclick = () => post("/control/freeze");
+    $("#b-thaw").onclick = () => post("/control/thaw");
+    $("#b-standby").onclick = () => post("/control/standby");
+    paint(); poll(); setInterval(poll, 1000);
   }
 })();
