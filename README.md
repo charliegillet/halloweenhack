@@ -254,7 +254,7 @@ STEP_DELAY_MS=2500 STANDBY_DELAY=6 OPEN=0 npm run demo
 | `npm run relay:channels` | 🕯️ List channels (as `afterlife`) |
 | `npm run relay:observer` | 👁️ List observer tokens via the official `agent-relay` CLI (read-only, never prints the link secret) |
 
-**Control API** (what the board's buttons call): `POST /control/run {complaint?, zombie?}` · `POST /control/kill` · `POST /control/freeze` · `POST /control/thaw` · `POST /control/standby` · `GET /control/state`. Board feed: `GET /events` (SSE). Hosted watch link: `GET /observer` opens the same live traffic in **agentrelay.com's observer** with the board's read-only token. Logs: `logs/`. Side effect: `outbox.jsonl`.
+**Control API** (what the board's buttons call): `POST /control/run {complaint?, zombie?}` · `POST /control/kill` · `POST /control/freeze` · `POST /control/thaw` · `POST /control/standby` · `GET /control/state`. Board feed: `GET /events` (SSE). Logs: `logs/`. Side effect: `outbox.jsonl`.
 
 ### 🤖 Your coding agent can join the séance
 
@@ -297,7 +297,7 @@ Afterlife is built to become the crash-recovery layer for any agent fleet. The t
 
 | Sponsor tech | Role in Afterlife |
 |---|---|
-| [**Agent Relay**](https://agentrelay.com) · `@agent-relay/sdk@14.0.0`, `agent-relay@15.0.1`, `@relaycast/mcp@12.3.0`, `relaycast@12.3.0` | All agent-to-agent traffic: checkpoint channels, offline-queued handoff DMs with idempotency keys, inbox drain, observer tokens (the board's watch link opens agentrelay.com's hosted observer). Each agent has its own identity (`register({strict:true})` once, then `reconnect`). Two MCP servers, the `using-agent-relay` skill and both CLIs let coding agents join the same workspace. |
+| [**Agent Relay**](https://agentrelay.com) · `@agent-relay/sdk@14.0.0`, `agent-relay@15.0.1`, `@relaycast/mcp@12.3.0`, `relaycast@12.3.0` | All agent-to-agent traffic: checkpoint channels, offline-queued handoff DMs with idempotency keys, inbox drain, observer tokens. Each agent has its own identity (`register({strict:true})` once, then `reconnect`). Two MCP servers, the `using-agent-relay` skill and both CLIs let coding agents join the same workspace. |
 | [**Terse Durable Actors**](https://docs.useterse.ai/quickstart) · `durable-actors@0.14.6` | The `LeaseTask` actor: `@Persisted` task state and ledger, `alarm.set()` as the lease, `onAlarm()` as the only path to LOST, serialized calls for first-claim-wins and fenced commits. |
 | [**OpenAI**](https://platform.openai.com) · `gpt-4.1-mini` | The worker agent that starts the job, and dies. |
 
