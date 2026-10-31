@@ -15,11 +15,10 @@ log(name, `pid ${process.pid}; starting task ${taskId}`);
 const st = await api('/task/start', { taskId, owner: name, vendor: 'openai' });
 if (!st.ok) { log(name, 'start failed', st); process.exit(1); }
 const channel: string = st.channel;
+let step = 0;
+const stopHb = startHeartbeat(name, taskId, () => 1, () => step); // own timer, starts with the lease
 await conn.ensureChannel(channel, `afterlife task ${taskId}`);
 log(name, `lease epoch 1; checkpoints -> #${channel}`);
-
-let step = 0;
-const stopHb = startHeartbeat(name, taskId, () => 1, () => step);
 const r = await runSteps({ name, vendor: 'openai', taskId, channel, epoch: 1, fromStep: 1, prior: [], conn, llm: openaiStep, onStep: (n) => (step = n) });
 stopHb();
 log(name, `finished: ${r}`);
