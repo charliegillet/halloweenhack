@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+tokens/
+*.token.json
+node_modules/
+*.db
+*.db-*
+dist/
+.terse/
