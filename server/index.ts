@@ -100,7 +100,7 @@ async function dispatch(taskId: string) {
   relay.post(channel, `${t.owner} presumed dead: no heartbeat for ${((t.detectLatencyMs ?? 0) / 1000).toFixed(1)}s. Epoch ${t.epoch - 1} -> ${t.epoch}. Handing to ${to}.`,
     { kind: 'alarm', taskId, epoch: t.epoch, step: t.step }, `${key}:alarm`).then((m) => ingestRelay({ id: m.id, from: AFTERLIFE, channel, text: `${t.owner} presumed dead; epoch ${t.epoch}`, data: { kind: 'alarm', taskId, epoch: t.epoch }, ts: Date.now() }))
     .catch((e) => console.warn('[dispatch] alarm post failed', e.message));
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  for (let attempt = 1; attempt <= 10; attempt++) { // hosted Relay can be overloaded; same idempotency key makes retries safe
     try {
       const text = `HANDOFF: resume task ${taskId} at step ${payload.resumeFromStep} (epoch ${payload.epoch}). ${payload.summary}`;
       const m = await relay.dm(to, text, payload, key);
@@ -110,7 +110,7 @@ async function dispatch(taskId: string) {
       return;
     } catch (e: any) {
       console.warn(`[dispatch] DM attempt ${attempt} failed`, e.message);
-      await new Promise((r) => setTimeout(r, 1000 * attempt));
+      await new Promise((r) => setTimeout(r, Math.min(1000 * attempt, 5000)));
     }
   }
   lease.log(taskId, 'dm', `DM to ${to} FAILED after retries`);
