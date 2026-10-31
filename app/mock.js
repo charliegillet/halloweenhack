@@ -52,7 +52,7 @@
 
   function play() {
     timers.forEach(clearTimeout); timers = []; stopHb(); hbSeq = 0;
-    A.reset(); A.setConn("mock");
+    A.reset(); A.setConn(window.AL_SHOT ? "live" : "mock");
     task = { taskId, state: "RUNNING", epoch: 1, step: 0, owner: W, vendor: "openai", leaseExpiresAt: null, lastHeartbeatAt: null, detectLatencyMs: null, steps: [] };
 
     at(600, () => proc(W, "up", 41022));
