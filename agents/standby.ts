@@ -17,7 +17,13 @@ async function live(m: RelayMsg) {
   const r = await api(`/task/${m.data!.taskId}`).catch(() => null);
   return !!r?.task && r.task.state === 'LOST' && r.task.epoch === m.data!.epoch;
 }
-const queued = (await conn.drainDms()).filter(isHandoff).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+async function drainRetry() {
+  for (let i = 1; ; i++) {
+    try { return await conn.drainDms(); }
+    catch (e: any) { log(name, `drainDms failed (try ${i}): ${e.message}`); if (i >= 8) return []; await sleep(2000); }
+  }
+}
+const queued = (await drainRetry()).filter(isHandoff).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
 log(name, `drained ${queued.length} queued handoff DM(s)`);
 let dm: RelayMsg | undefined;
 for (const m of queued) { if (await live(m)) { dm = m; break; } log(name, `ignoring stale handoff ${m.id} (task ${m.data!.taskId} e${m.data!.epoch})`); }
@@ -25,6 +31,19 @@ if (!dm) {
   log(name, 'no open handoff queued; listening live');
   dm = await new Promise<RelayMsg>((resolve) => {
     conn.onAny(async (m) => { if (m.type === 'dm' && isHandoff(m) && (await live(m))) resolve(m); });
+    // fallback if Relay is overloaded/laggy: ask the lease authority which task is LOST (the DM is still the primary path)
+    (async () => {
+      for (;;) {
+        await sleep(3000);
+        try {
+          const cs = await api('/control/state'); const r = cs?.taskId ? await api(`/task/${cs.taskId}`) : null;
+          if (r?.task?.state === 'LOST') {
+            log(name, 'no DM seen yet; lease authority reports LOST, falling back to server-reported handoff');
+            return resolve({ id: 'fallback', type: 'dm', from: 'lease', text: '', ts: '', data: { kind: 'handoff', taskId: r.task.taskId ?? cs.taskId, epoch: r.task.epoch, resumeFromStep: r.task.step + 1, channel: r.channel } } as any);
+          }
+        } catch {}
+      }
+    })();
   });
 }
 const { taskId, epoch: dmEpoch, resumeFromStep, channel } = dm.data as any;
