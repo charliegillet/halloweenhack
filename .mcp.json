@@ -2,7 +2,16 @@
   "mcpServers": {
     "agent-relay": {
       "command": "bash",
-      "args": ["scripts/relay-mcp.sh"]
+      "args": [
+        "scripts/relay-mcp.sh"
+      ]
+    },
+    "agent-relay-official": {
+      "command": "bash",
+      "args": [
+        "scripts/relay-mcp.sh",
+        "official"
+      ]
     }
   }
 }
