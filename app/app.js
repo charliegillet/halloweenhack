@@ -524,6 +524,7 @@
       box.classList.toggle("off", off);
     }
     async function poll() {
+      if (window.AL_SHOT) { st = { taskId: null, worker: { alive: true, frozen: false }, standby: { alive: false } }; paint(); return; } // screenshot mode: no server
       try {
         const r = await fetch("/control/state", { cache: "no-store" });
         if (r.status === 404) { off = true; st = st || {}; } else if (r.ok) { st = await r.json(); off = false; }
