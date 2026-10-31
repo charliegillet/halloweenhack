@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Afterlife</title>
   <meta name="description" content="When an agent dies, its work doesn't.">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
+  <script>window.AL_DEMO = /^\/demo\/?$/.test(location.pathname) || new URLSearchParams(location.search).has("mock"); document.body.dataset.mode = window.AL_DEMO ? "demo" : "live";</script>
+  <div class="ribbon" id="ribbon" aria-hidden="true">SIMULATED REPLAY</div>
   <canvas id="sky" aria-hidden="true"></canvas>
 
   <div class="shell">
@@ -15,6 +17,10 @@
       <div class="brand">
         <div class="wordmark">Afterlife<span class="cursor">_</span></div>
         <div class="tagline">When an agent dies, its work doesn't.</div>
+        <div class="meta">
+          <span class="pill modepill" id="modepill"><i class="dot"></i><span id="modetext"></span></span>
+          <nav class="modenav"><a href="/demo" id="nav-demo">Demo</a><a href="/live" id="nav-live">Live</a></nav>
+        </div>
         <div class="meta">
           <span class="pill" id="conn"><i class="dot"></i><span>connecting</span></span>
           <span class="pill subtle" id="backend">lease authority · heartbeat 2s · lease 8s</span>
@@ -38,6 +44,18 @@
       <div class="cap" id="story-cap">waiting for a task…</div>
       <div class="sub" id="story-sub"></div>
     </div>
+
+    <div class="controls" id="controls" hidden>
+      <input id="c-complaint" type="text" placeholder="guest complaint (optional)" maxlength="300" autocomplete="off">
+      <label class="chk"><input type="checkbox" id="c-zombie"> zombie</label>
+      <button class="cbtn go" id="b-run">▶ Start run</button>
+      <button class="cbtn bad" id="b-kill">☠ Kill GPT (kill -9)</button>
+      <button class="cbtn" id="b-freeze">❄ Freeze</button>
+      <button class="cbtn" id="b-thaw">☀ Thaw</button>
+      <button class="cbtn" id="b-standby">👻 Wake Claude</button>
+      <span class="chint" id="c-hint">Start → wait for step 3 → Kill → wait for DM → Wake Claude</span>
+    </div>
+    <div class="toast" id="toast" hidden></div>
 
     <main class="grid">
       <section class="panel tasks">
@@ -68,7 +86,7 @@
     </footer>
   </div>
 
-  <script src="app.js?v=3"></script>
-  <script src="mock.js?v=3"></script>
+  <script src="app.js?v=4"></script>
+  <script src="mock.js?v=4"></script>
 </body>
 </html>
