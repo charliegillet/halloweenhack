@@ -161,7 +161,8 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && p.startsWith('/task/')) {
       const id = decodeURIComponent(p.slice(6));
       const t = await lease.status(id);
-      return json(res, t ? 200 : 404, { ok: !!t, task: t, channel: channels.get(id) ?? `task-${id}`, outbox: outbox.filter((o) => o.taskId === id).length });
+      const dmSent = lease.ledger(id).some((r: any) => r.kind === 'dm' && /^DM \S+ ->/.test(r.text));
+      return json(res, t ? 200 : 404, { ok: !!t, task: t, dmSent, channel: channels.get(id) ?? `task-${id}`, outbox: outbox.filter((o) => o.taskId === id).length });
     }
     if (req.method === 'POST') {
       const b = await body(req);
