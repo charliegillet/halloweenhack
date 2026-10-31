@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
-  <script>window.AL_DEMO = /^\/demo\/?$/.test(location.pathname) || new URLSearchParams(location.search).has("mock"); document.body.dataset.mode = window.AL_DEMO ? "demo" : "live";</script>
+  <script>window.AL_DEMO = /^\/demo\/?$/.test(location.pathname) || new URLSearchParams(location.search).has("mock"); document.body.dataset.mode = window.AL_DEMO ? "demo" : "live"; window.AL_SHOT = new URLSearchParams(location.search).has("shot"); if (window.AL_SHOT) { document.body.dataset.mode = "live"; document.body.dataset.shot = "1"; }</script>
   <div class="ribbon" id="ribbon" aria-hidden="true">SIMULATED REPLAY</div>
   <canvas id="sky" aria-hidden="true"></canvas>
 
